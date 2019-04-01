@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Webtoon-dl is a comic downloader for webtoon.com. It can save individual
+Webtoon-dl is a comic downloader for webtoons.com. It can save individual
 comics or entire galleries as folders of numbered images or CBZ comicbook
 archive files.
 """
@@ -52,9 +52,10 @@ def comics_from_gallery(gallery_url):
 
 def process_url_list(url_list):
     """
-    Organize webtoon urls into dictionary and expand any links to galleries
+    Organize webtoons URLs into dictionary and expand any links to galleries
     :param url_list: list of str URLs to comic issue or gallery pages
     :return: list of dicts containing url, author and title for each comic issue
+             [{'url': str, 'author': str, 'title': str}, ...]
     """
     
     processed_list = []
@@ -84,7 +85,8 @@ def get_comic_pages(issue_dict):
     """
     Get direct image links to all comic page images from link to issue page
     :param issue_dict: comic issue dict entry
-    :return: list of URLs to comic page images
+                       {'url': str, 'author': str, 'title': str}
+    :return: list of str URLs to comic page images
     """
     
     session = HTMLSession()
@@ -102,6 +104,7 @@ def get_comic_page_images(issue_dict):
     """
     Get image files for each page of comic issue
     :param issue_dict: comic issue dict entry
+                       {'url': str, 'author': str, 'title': str}
     :return: list of jpg binary data for each page of comic
     """
     
@@ -125,10 +128,10 @@ def get_comic_page_images(issue_dict):
 
 
 # Set up argument parser
-parser = argparse.ArgumentParser(description="Webtoon.com comic downloader\nSaves comics as CBZ archives or folders of images.\nAutomatically saves galleries as seperate comics.",
+parser = argparse.ArgumentParser(description="Webtoons.com comic downloader\nSaves comics as CBZ archives or folders of images.\nAutomatically saves galleries as seperate comics.",
                                  formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("webtoon_url",
-                    help="Url to webtoon comic or creator page.\nMultiple URLs may be entered.",
+                    help="Url to webtoons comic or creator page.\nMultiple URLs may be entered.",
                     type=str,
                     nargs='+')
 parser.add_argument("-r", "--raw",
