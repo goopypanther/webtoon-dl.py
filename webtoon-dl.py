@@ -157,14 +157,15 @@ print("Found %i issues." % len(comic_list))
 
 # Save each comic
 for comic in comic_list:
-    print("Saving %s_%s..." % (comic['author'], comic['title']))
-    
+    epsiodeNumber = comic['url'].split('episode_no=')[1]
+    print("Saving issue " + epsiodeNumber + ": %s_%s..." % (comic['author'], comic['title']))
+
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
     
     # Raw mode, save images into folders
     if args.raw:
-        outpath = "%s/%s_%s" % (args.output, comic['author'], comic['title'])
+        outpath = "%s" % args.output + "/" + epsiodeNumber + "_%s_%s" % (comic['author'], comic['title'])
         os.makedirs(outpath, exist_ok=True)
         
         # Write each image to folder
@@ -181,5 +182,4 @@ for comic in comic_list:
             for index, image in enumerate(comic['page-img']):
                 zip.writestr("%i.jpg" % index, image)
 
-    
 print("Done")
