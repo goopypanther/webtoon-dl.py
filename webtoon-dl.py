@@ -141,6 +141,9 @@ parser.add_argument("-o", "--output",
                     default=os.getcwd(),
                     help="Path to output directory. Defaults to current directory.",
                     type=str)
+parser.add_argument("-n", "--number",
+                    help="Add episode/issue numbers to file names- useful when episodes/issue names do not contain numbering.",
+                    action="store_true")
 
 # Parse arguments
 args = parser.parse_args()
@@ -157,15 +160,20 @@ print("Found %i issues." % len(comic_list))
 
 # Save each comic
 for comic in comic_list:
-    epsiodeNumber = comic['url'].split('episode_no=')[1]
-    print("Saving issue " + epsiodeNumber + ": %s_%s..." % (comic['author'], comic['title']))
+    # Fetch the chapter/episode/issue number from the end of the URL
+    episodeNumber = comic['url'].split('episode_no=')[1]
+
+    print("Saving issue " + episodeNumber + ": %s_%s..." % (comic['author'], comic['title']))
 
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
     
     # Raw mode, save images into folders
     if args.raw:
-        outpath = "%s" % args.output + "/" + epsiodeNumber + "_%s_%s" % (comic['author'], comic['title'])
+        if args.number:
+            outpath = "%s" % args.output + "/" + episodeNumber + "_%s_%s" % (comic['author'], comic['title'])
+        else:
+            outpath = "%s/%s_%s" % (args.output, comic['author'], comic['title'])
         os.makedirs(outpath, exist_ok=True)
         
         # Write each image to folder
