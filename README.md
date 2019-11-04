@@ -7,12 +7,12 @@ Requires
 --------
 
  * `>=Python3.6`
- * [requests-html](https://github.com/kennethreitz/requests-html)
+ * [requests_html](https://github.com/kennethreitz/requests-html)
 
 Installing
 ----------
 
-`pip3 install requests-html` or whatever
+`pip3 install requests_html` or whatever
 
 Usage
 -----
