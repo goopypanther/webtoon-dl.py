@@ -18,14 +18,15 @@ Usage
 -----
 
 ```
-usage: webtoon-dl.py [-h] [-r] [-o OUTPUT] webtoon_url [webtoon_url ...]
+usage: webtoon-dl.py [-h] [-r] [-n] [-o OUTPUT] webtoon_url [webtoon_url ...]
 
   webtoon_url           Url to webtoon comic or creator page.
                         Multiple URLs may be entered.
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit.
   -r, --raw             Save image files to folder instead of CBZ output.
+  -n, --number          Add issue numbers to file names (useful when issue names do not contain numbering).
   -o OUTPUT, --output OUTPUT
                         Path to output directory. Defaults to current directory.
 ```
