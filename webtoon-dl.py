@@ -34,13 +34,16 @@ def comics_from_gallery(gallery_url):
     session = HTMLSession()
     
     # Get first page
-    pages.append(session.get(gallery_url))
+    agecookie = {'ageGatePass': 'true'}
+    pages.append(session.get(gallery_url, cookies=agecookie))
+
+
     
     if pages[0]:
         # Extract list of other pages and download
         for new_page in pages[0].html.find('.paginate', first=True).absolute_links:
             # Get all other pages
-            pages.append(session.get(new_page))
+            pages.append(session.get(new_page, cookies=agecookie))
         
         # Extract list of every comic on every page
         for page in pages:
@@ -90,8 +93,9 @@ def get_comic_pages(issue_dict):
     """
     
     session = HTMLSession()
+    agecookie = {'ageGatePass': 'true'}
     
-    r = session.get(issue_dict['url'])
+    r = session.get(issue_dict['url'], cookies=agecookie)
     
     if r:
         pages_list = [page.attrs['data-url'] for page in r.html.find('._images')]
