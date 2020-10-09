@@ -156,14 +156,14 @@ print("Finding comics...")
 comic_list = process_url_list(args.webtoon_url)
 print("Found %i issues." % len(comic_list))
 
-# Add page URLs for each issue in dict list
-[comic.update({'page-urls': get_comic_pages(comic)}) for comic in comic_list]
-
-# Get images for each issue in dict list
-[comic.update({'page-img': get_comic_page_images(comic)}) for comic in comic_list]
-
 # Save each comic
 for comic in comic_list:
+    # Add page URLs for each issue in dict list
+    comic.update({'page-urls': get_comic_pages(comic)})
+    
+    # Get images for each issue in dict list
+    comic.update({'page-img': get_comic_page_images(comic)})    
+    
     # Fetch the chapter/episode/issue number from the end of the URL
     episodeNumber = comic['url'].split('episode_no=')[1]
 
