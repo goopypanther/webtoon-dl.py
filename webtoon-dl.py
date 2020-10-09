@@ -6,7 +6,6 @@ Webtoon-dl is a comic downloader for webtoons.com. It can save individual
 comics or entire galleries as folders of numbered images or CBZ comicbook
 archive files.
 """
-
 __title__ = 'webtoon-dl.py'
 __author__ = 'Goopypanther'
 __license__ = 'GPL'
@@ -14,11 +13,13 @@ __copyright__ = 'Copyright 2019 Goopypanther'
 __version__ = '0.1'
 
 
+
 import argparse
 import os
 import re
 from requests_html import HTMLSession
 import zipfile
+
 
 
 def comics_from_gallery(gallery_url):
@@ -30,27 +31,38 @@ def comics_from_gallery(gallery_url):
 
     comics_list = []
     pages = []
+    more_pages = []
     
     session = HTMLSession()
     
     # Get first page
     agecookie = {'ageGatePass': 'true'}
     pages.append(session.get(gallery_url, cookies=agecookie))
-
-
     
     if pages[0]:
-        # Extract list of other pages and download
-        for new_page in pages[0].html.find('.paginate', first=True).absolute_links:
-            # Get all other pages
-            pages.append(session.get(new_page, cookies=agecookie))
+        more_pages.append(pages[0])
+        moarpages = pages[0].html.find('.pg_next', first=True)
+        
+        # Check if the list of pages is paginated
+        while moarpages:
+            moarpages_link = session.get(''.join(moarpages.absolute_links), cookies=agecookie)
+            more_pages.append(moarpages_link)
+            moarpages = moarpages_link.html.find('.pg_next', first=True)
+        
+        # Repeat for each pagination page
+        for pagegroup in more_pages:
+            
+            # Extract list of other pages and download
+            for new_page in pagegroup.html.find('.paginate', first=True).absolute_links:
+                # Get all other pages
+                pages.append(session.get(new_page, cookies=agecookie))
         
         # Extract list of every comic on every page
         for page in pages:
             comics_list.extend(page.html.find('#_listUl', first=True).absolute_links)
-            # TODO: how does pagination work on webtoons? The div with class "paginate" on a gallery page seems to have equal entities to the number of pages. Is there an upper limit to this? Is it reliable?
            
     return (comics_list)
+
 
 
 def process_url_list(url_list):
@@ -84,6 +96,7 @@ def process_url_list(url_list):
     return (processed_list)
 
 
+
 def get_comic_pages(issue_dict):
     """
     Get direct image links to all comic page images from link to issue page
@@ -115,6 +128,7 @@ def get_comic_page_images(issue_dict):
     page_images = []
     
     session = HTMLSession()
+    agecookie = {'ageGatePass': 'true'}
     
     print("Issue: %s" % issue_dict['title'])
     
@@ -127,7 +141,6 @@ def get_comic_page_images(issue_dict):
             page_images.append(r.content)
 
     return (page_images)
-
 
 
 
@@ -156,14 +169,20 @@ print("Finding comics...")
 comic_list = process_url_list(args.webtoon_url)
 print("Found %i issues." % len(comic_list))
 
+# Add page URLs for each issue in dict list
+#[comic.update({'page-urls': get_comic_pages(comic)}) for comic in comic_list]
+
+# Get images for each issue in dict list
+#[comic.update({'page-img': get_comic_page_images(comic)}) for comic in comic_list]
+
 # Save each comic
 for comic in comic_list:
     # Add page URLs for each issue in dict list
     comic.update({'page-urls': get_comic_pages(comic)})
-    
+
     # Get images for each issue in dict list
-    comic.update({'page-img': get_comic_page_images(comic)})    
-    
+    comic.update({'page-img': get_comic_page_images(comic)})
+
     # Fetch the chapter/episode/issue number from the end of the URL
     episodeNumber = comic['url'].split('episode_no=')[1]
 
