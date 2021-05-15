@@ -117,6 +117,8 @@ def get_comic_page_images(issue_dict):
     # Download each image in page list and create list of jpg binary data
     for index, page in enumerate(issue_dict['page-urls']):
         print("Downloading page %i/%i" % ((index + 1), len(issue_dict['page-urls'])))
+        # to download good-quality images
+        page = page.replace('?type=q90', '')
         r = session.get(page, headers={'referer': issue_dict['url']})
         
         if r:
