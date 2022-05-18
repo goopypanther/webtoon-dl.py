@@ -201,29 +201,25 @@ for episode in episodes:
     episode_images = get_episode_images(episode)
     print(f"💾 Saving episode...")
 
-    # Create output directory
-    os.makedirs(args.output, exist_ok=True)
+    # Create title output directory
+    outpath = f"{args.output}/{episode['title']}"
+    os.makedirs(outpath, exist_ok=True)
 
-    # Raw mode, save images into folders
+    # Check for number argument
+    numbering = f"#{episode['no']:03}_" if args.number else ""
+    outpath += f"/{episode['title']}_{numbering}{episode['name']}"
+
+    # Raw mode, save images into folder
     if args.raw:
-        if args.number:
-            outpath = f"{args.output}/{episode['no']}_{episode['title']}_{episode['name']}"
-        else:
-            outpath = f"{args.output}/{episode['title']}_{episode['name']}"
         os.makedirs(outpath, exist_ok=True)
-
-        # Write each image to folder
         for index, image in enumerate(episode_images):
-            with open(f"{outpath}/{index}.jpg", 'wb') as f:
+            with open(f"{outpath}/{index:02}.jpg", 'wb') as f:
                 f.write(image)
 
-    # CBZ mode
+    # CBZ mode, save images into zip file
     else:
-        outpath = f"{args.output}/{episode['title']}_{episode['name']}.cbz"
-
-        # Write each image into zip file
-        with zipfile.ZipFile(outpath, 'w') as zip:
+        with zipfile.ZipFile(f"{outpath}.cbz", 'w') as zip:
             for index, image in enumerate(episode_images):
-                zip.writestr(f"{index}.jpg", image)
+                zip.writestr(f"{index:02}.jpg", image)
 
 print("🎉 DONE! All episodes downloaded.")
