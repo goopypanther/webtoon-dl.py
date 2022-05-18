@@ -20,7 +20,12 @@ import re
 from requests_html import HTMLSession
 import zipfile
 
-
+# bypass age confirmation page
+AGE_COOKIE = {
+    'needCCPA': 'false',
+    'needCOPPA': 'false',
+    'needGDPR': 'false',
+}
 
 def comics_from_gallery(gallery_url):
     """
@@ -32,35 +37,34 @@ def comics_from_gallery(gallery_url):
     comics_list = []
     pages = []
     more_pages = []
-    
+
     session = HTMLSession()
-    
+
     # Get first page
-    agecookie = {'ageGatePass': 'true'}
-    pages.append(session.get(gallery_url, cookies=agecookie))
-    
+    pages.append(session.get(gallery_url, cookies=AGE_COOKIE))
+
     if pages[0]:
         more_pages.append(pages[0])
         moarpages = pages[0].html.find('.pg_next', first=True)
-        
+
         # Check if the list of pages is paginated
         while moarpages:
-            moarpages_link = session.get(''.join(moarpages.absolute_links), cookies=agecookie)
+            moarpages_link = session.get(''.join(moarpages.absolute_links), cookies=AGE_COOKIE)
             more_pages.append(moarpages_link)
             moarpages = moarpages_link.html.find('.pg_next', first=True)
-        
+
         # Repeat for each pagination page
         for pagegroup in more_pages:
-            
+
             # Extract list of other pages and download
             for new_page in pagegroup.html.find('.paginate', first=True).absolute_links:
                 # Get all other pages
-                pages.append(session.get(new_page, cookies=agecookie))
-        
+                pages.append(session.get(new_page, cookies=AGE_COOKIE))
+
         # Extract list of every comic on every page
         for page in pages:
             comics_list.extend(page.html.find('#_listUl', first=True).absolute_links)
-           
+
     return (comics_list)
 
 
@@ -72,23 +76,23 @@ def process_url_list(url_list):
     :return: list of dicts containing url, author and title for each comic issue
              [{'url': str, 'author': str, 'title': str}, ...]
     """
-    
+
     processed_list = []
-    
+
     for url in url_list:
         # Capture groups: 0 -- Full match, 1 -- Author name, 2 -- Comic title
         r = re.search(r"webtoons\.com\/.+?\/.+?\/(.+?)\/(.+?)(?:\?|\/)", url)
-        
+
         if r:
             # Check if webtoon_url is gallery
             if r.group(2) == "list":
                 print("Getting gallery from %s..." % r.group(1))
-                
+
                 # Do additional processing that returns new url list
                 # Recursivly run this fuction
                 # Extend results into expanded_list
                 processed_list.extend(process_url_list(comics_from_gallery(url)))
-                
+
             else:
                 processed_list.append({'url': url, 'author': r.group(1), 'title': r.group(2)})
                 print(r.group(2))
@@ -104,12 +108,11 @@ def get_comic_pages(issue_dict):
                        {'url': str, 'author': str, 'title': str}
     :return: list of str URLs to comic page images
     """
-    
+
     session = HTMLSession()
-    agecookie = {'ageGatePass': 'true'}
-    
-    r = session.get(issue_dict['url'], cookies=agecookie)
-    
+
+    r = session.get(issue_dict['url'], cookies=AGE_COOKIE)
+
     if r:
         pages_list = [page.attrs['data-url'] for page in r.html.find('._images')]
         print("Comic %s: got %i pages" % (issue_dict['title'], len(pages_list)))
@@ -124,21 +127,20 @@ def get_comic_page_images(issue_dict):
                        {'url': str, 'author': str, 'title': str}
     :return: list of jpg binary data for each page of comic
     """
-    
+
     page_images = []
-    
+
     session = HTMLSession()
-    agecookie = {'ageGatePass': 'true'}
-    
+
     print("Issue: %s" % issue_dict['title'])
-    
+
     # Download each image in page list and create list of jpg binary data
     for index, page in enumerate(issue_dict['page-urls']):
         print("Downloading page %i/%i" % ((index + 1), len(issue_dict['page-urls'])))
         # to download good-quality images
         page = page.replace('?type=q90', '')
         r = session.get(page, headers={'referer': issue_dict['url']})
-        
+
         if r:
             page_images.append(r.content)
 
@@ -192,7 +194,7 @@ for comic in comic_list:
 
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
-    
+
     # Raw mode, save images into folders
     if args.raw:
         if args.number:
@@ -200,7 +202,7 @@ for comic in comic_list:
         else:
             outpath = "%s/%s_%s" % (args.output, comic['author'], comic['title'])
         os.makedirs(outpath, exist_ok=True)
-        
+
         # Write each image to folder
         for index, image in enumerate(comic['page-img']):
             with open("%s/%s.jpg" % (outpath, index), 'wb') as f:
@@ -209,7 +211,7 @@ for comic in comic_list:
     # CBZ mode
     else:
         outpath = "%s/%s_%s.cbz" % (args.output, comic['author'], comic['title'])
-        
+
         # Write each image into zip file
         with zipfile.ZipFile(outpath, 'w') as zip:
             for index, image in enumerate(comic['page-img']):
