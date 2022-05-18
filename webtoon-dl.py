@@ -28,45 +28,49 @@ AGE_COOKIE = {
 }
 
 
-def comics_from_gallery(gallery_url):
+def get_episodes_from_list(list_url: str) -> list[str]:
+    """Get episode URLs from a episode list URL
+
+    Args:
+        list_url (str): URL to webtoons episode list
+
+    Returns:
+        list[str]: Episode URLs
     """
-    Return a list of comic issue URLs from a gallery URL
-    :param gallery_url: str URL to webtoons gallery
-    :return: list of URLs to comic issues
-    """
 
-    comics_list = []
-    pages = []
-    more_pages = []
+    # Has to be this ugly as webtoon doesn't 404 when overpaginating... (._.)
+    # Could be so nice with a simple iterator.
 
-    # Get first page
-    pages.append(SESSION.get(gallery_url, cookies=AGE_COOKIE))
+    list_pages = set()  # to ensure unique pages
+    episode_urls = set()
 
-    if pages[0]:
-        more_pages.append(pages[0])
-        moarpages = pages[0].html.find('.pg_next', first=True)
+    # Remove any unneccesary url parameters to ensure being on first page
+    major_page_url = list_url.split("&")[0]
 
-        # Check if the list of pages is paginated
-        while moarpages:
-            moarpages_link = SESSION.get(''.join(moarpages.absolute_links),
-                                         cookies=AGE_COOKIE)
-            more_pages.append(moarpages_link)
-            moarpages = moarpages_link.html.find('.pg_next', first=True)
+    # Circle through all major list pages (only 10 pages/paginator)
+    while major_page_url:
+        major_page = SESSION.get(major_page_url, cookies=AGE_COOKIE)
+        if major_page:
+            # Add current page
+            list_pages.add(major_page)
+            # Extract all list pages from paginator
+            for page in major_page.html.find('.paginate', first=True).absolute_links:
+                list_pages.add(SESSION.get(page, cookies=AGE_COOKIE))
 
-        # Repeat for each pagination page
-        for pagegroup in more_pages:
+            # Look for following major page
+            paginator_next = major_page.html.find('.pg_next', first=True)
+            major_page_url = paginator_next.absolute_links.pop() if (paginator_next) \
+                else False
 
-            # Extract list of other pages and download
-            for new_page in pagegroup.html.find('.paginate', first=True).absolute_links:
-                # Get all other pages
-                pages.append(SESSION.get(new_page, cookies=AGE_COOKIE))
+        else:
+            return
 
-        # Extract list of every comic on every page
-        for page in pages:
-            comics_list.extend(page.html.find(
-                '#_listUl', first=True).absolute_links)
+    # Extract list of episodes on every list page
+    for page in list_pages:
+        episode_urls.update(
+            page.html.find('#_listUl', first=True).absolute_links)
 
-    return (comics_list)
+    return list(episode_urls)
 
 
 def get_episode_list(urls: list[str]) -> list[dict]:
@@ -94,7 +98,7 @@ def get_episode_list(urls: list[str]) -> list[dict]:
         # Retrieve episode urls if url is title page/episode list
         if match.group(2) == "list":
             print(f"Fetching episodes from {match.group(1)}...")
-            urls.extend(comics_from_gallery(url))
+            urls.extend(get_episodes_from_list(url))
             continue
 
         episodes.append({
@@ -185,11 +189,13 @@ parser.add_argument("-e", "--end",
 
 args = parser.parse_args()
 
-print("🔍 Finding comics...")
+# Search episodes
+print("🔍 Looking for comics...")
 episodes = get_episode_list(args.webtoon_url)
 print(f"✔️ Found {len(episodes)} episodes!\n")
 
 # Save each comic
+episodes.sort(key=lambda episode: episode['no'])
 for episode in episodes:
     # Check if episode should not be downloaded and skip
     if (args.start is not None and episode['no'] < args.start) \
