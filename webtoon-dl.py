@@ -101,7 +101,7 @@ def process_url_list(url_list):
                     'author': r.group(1),
                     'title': r.group(2)
                 })
-                print(r.group(2))
+                # print(r.group(2))
 
     return (processed_list)
 
@@ -167,8 +167,14 @@ parser.add_argument("-o", "--output",
                     help="Path to output directory. Defaults to current directory.",
                     type=str)
 parser.add_argument("-n", "--number",
-                    help="Add episode/issue numbers to file names- useful when episodes/issue names do not contain numbering.",
+                    help="Add episode number to file name. Useful when episode names do not contain numbering.",
                     action="store_true")
+parser.add_argument("-s", "--start",
+                    help="Specify episode number from which download should start.",
+                    type=int)
+parser.add_argument("-e", "--end",
+                    help="Specify episode number which should be downloaded last.",
+                    type=int)
 
 # Parse arguments
 args = parser.parse_args()
@@ -185,17 +191,24 @@ print(f"Found {len(comic_list)} issues.")
 
 # Save each comic
 for comic in comic_list:
+    # Fetch the episode number from the end of the URL
+    episode_no = int(comic['url'].split('episode_no=')[1])
+
+    # Check if episode should not be downloaded and skip
+    if (args.start is not None and episode_no < args.start) \
+            or (args.end is not None and episode_no > args.end):
+        print(f"Skipping issue {episode_no}: " \
+            f"{comic['author']} / {comic['title']}.")
+        continue
+
     # Add page URLs for each issue in dict list
     comic.update({'page-urls': get_comic_pages(comic)})
 
     # Get images for each issue in dict list
     comic.update({'page-img': get_comic_page_images(comic)})
 
-    # Fetch the chapter/episode/issue number from the end of the URL
-    episodeNumber = comic['url'].split('episode_no=')[1]
-
-    print(f"Saving issue {episodeNumber}: \
-        {comic['author']}_{comic['title']}...")
+    print(f"Saving issue {episode_no}: " \
+        f"{comic['author']} / {comic['title']}...")
 
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
@@ -203,7 +216,7 @@ for comic in comic_list:
     # Raw mode, save images into folders
     if args.raw:
         if args.number:
-            outpath = f"{args.output}/{episodeNumber}_{comic['author']}_{comic['title']}"
+            outpath = f"{args.output}/{episode_no}_{comic['author']}_{comic['title']}"
         else:
             outpath = f"{args.output}/{comic['author']}_{comic['title']}"
         os.makedirs(outpath, exist_ok=True)
