@@ -122,7 +122,8 @@ def get_comic_pages(issue_dict):
     if r:
         pages_list = [page.attrs['data-url']
                       for page in r.html.find('._images')]
-        print(f"Comic {issue_dict['name']}: got {len(pages_list)} pages")
+        print(f"📄 {episode['title']} #{episode['no']}: "
+              f"{episode['name']} - Found {len(pages_list)} pages.")
     return (pages_list)
 
 
@@ -138,11 +139,10 @@ def get_comic_page_images(issue_dict):
 
     session = HTMLSession()
 
-    print(f"Issue: {issue_dict['name']}")
-
     # Download each image in page list and create list of jpg binary data
+    total_pages = len(issue_dict['page-urls']);
     for index, page in enumerate(issue_dict['page-urls']):
-        print(f"Downloading page {(index + 1)}/{len(issue_dict['page-urls'])}")
+        print(f"\tDownloading page {index+1}/{total_pages}.")
         # to download good-quality images
         page = page.replace('?type=q90', '')
         r = session.get(page, headers={'referer': issue_dict['url']})
@@ -153,6 +153,9 @@ def get_comic_page_images(issue_dict):
     return (page_images)
 
 
+########################################################################
+#   MAIN FUNCTION                                                      #
+########################################################################
 # Set up argument parser
 parser = argparse.ArgumentParser(description="Webtoons.com comic downloader\nSaves comics as CBZ archives or folders of images.\nAutomatically saves galleries as seperate comics.",
                                  formatter_class=argparse.RawTextHelpFormatter)
@@ -177,36 +180,28 @@ parser.add_argument("-e", "--end",
                     help="Specify episode number which should be downloaded last.",
                     type=int)
 
-# Parse arguments
 args = parser.parse_args()
 
-print("Finding comics...")
-comic_list = get_episode_list(args.webtoon_url)
-print(f"Found {len(comic_list)} issues.")
-
-# Add page URLs for each issue in dict list
-#[comic.update({'page-urls': get_comic_pages(comic)}) for comic in comic_list]
-
-# Get images for each issue in dict list
-#[comic.update({'page-img': get_comic_page_images(comic)}) for comic in comic_list]
+print("🔍 Finding comics...")
+episodes = get_episode_list(args.webtoon_url)
+print(f"✔️ Found {len(episodes)} episodes!")
 
 # Save each comic
-for comic in comic_list:
+for episode in episodes:
     # Check if episode should not be downloaded and skip
-    if (args.start is not None and comic['no'] < args.start) \
-            or (args.end is not None and comic['no'] > args.end):
-        print(f"Skipping episode {comic['no']}: "
-              f"{comic['title']} / {comic['name']}.")
+    if (args.start is not None and episode['no'] < args.start) \
+            or (args.end is not None and episode['no'] > args.end):
+        print(f"ℹ️ Skipping {episode['title']} #{episode['no']}: "
+              f"{episode['name']}.")
         continue
 
     # Add page URLs for each issue in dict list
-    comic.update({'page-urls': get_comic_pages(comic)})
+    episode.update({'page-urls': get_comic_pages(episode)})
 
     # Get images for each issue in dict list
-    comic.update({'page-img': get_comic_page_images(comic)})
+    episode.update({'page-img': get_comic_page_images(episode)})
 
-    print(f"Saving issue {comic['no']}: "
-          f"{comic['title']} / {comic['name']}...")
+    print(f"💾 Saving episode...")
 
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
@@ -214,23 +209,23 @@ for comic in comic_list:
     # Raw mode, save images into folders
     if args.raw:
         if args.number:
-            outpath = f"{args.output}/{comic['no']}_{comic['title']}_{comic['name']}"
+            outpath = f"{args.output}/{episode['no']}_{episode['title']}_{episode['name']}"
         else:
-            outpath = f"{args.output}/{comic['title']}_{comic['name']}"
+            outpath = f"{args.output}/{episode['title']}_{episode['name']}"
         os.makedirs(outpath, exist_ok=True)
 
         # Write each image to folder
-        for index, image in enumerate(comic['page-img']):
+        for index, image in enumerate(episode['page-img']):
             with open(f"{outpath}/{index}.jpg", 'wb') as f:
                 f.write(image)
 
     # CBZ mode
     else:
-        outpath = f"{args.output}/{comic['title']}_{comic['name']}.cbz"
+        outpath = f"{args.output}/{episode['title']}_{episode['name']}.cbz"
 
         # Write each image into zip file
         with zipfile.ZipFile(outpath, 'w') as zip:
-            for index, image in enumerate(comic['page-img']):
+            for index, image in enumerate(episode['page-img']):
                 zip.writestr(f"{index}.jpg", image)
 
-print("Done")
+print("🎉 DONE! All episodes downloaded.")
