@@ -187,7 +187,7 @@ args = parser.parse_args()
 
 print("🔍 Finding comics...")
 episodes = get_episode_list(args.webtoon_url)
-print(f"✔️ Found {len(episodes)} episodes!")
+print(f"✔️ Found {len(episodes)} episodes!\n")
 
 # Save each comic
 for episode in episodes:
@@ -195,11 +195,11 @@ for episode in episodes:
     if (args.start is not None and episode['no'] < args.start) \
             or (args.end is not None and episode['no'] > args.end):
         print(f"ℹ️ Skipping {episode['title']} #{episode['no']}: "
-              f"{episode['name']}.")
+              f"{episode['name']}.\n")
         continue
 
     episode_images = get_episode_images(episode)
-    print(f"💾 Saving episode...")
+    print(f"💾 Saving episode...\n")
 
     # Create title output directory
     outpath = f"{args.output}/{episode['title']}"
