@@ -84,7 +84,8 @@ def get_episode_list(urls: list[str]) -> list[dict]:
 
     for url in urls:
         # Capture groups: 0 -- Full match, 1 -- Title, 2 -- Episode name
-        match = re.search(r"webtoons\.com\/.+?\/.+?\/(.+?)\/(.+?)(?:\?|\/)", url)
+        match = re.search(
+            r"webtoons\.com\/.+?\/.+?\/(.+?)\/(.+?)(?:\?|\/)", url)
 
         if match is None:
             print(f"\t ❌ Error: '{url}' could not be parsed.")
@@ -106,46 +107,53 @@ def get_episode_list(urls: list[str]) -> list[dict]:
     return episodes
 
 
-def get_comic_pages(issue_dict):
-    """
-    Get direct image links to all comic page images from link to issue page
-    :param issue_dict: comic issue dict entry
-                       {'url': str, 'author': str, 'title': str}
-    :return: list of str URLs to comic page images
+def get_image_urls(episode: dict) -> list[str]:
+    """Get direct image links to all page images of episode
+
+    Args:
+        episode (dict): Episode dict object
+                        {'url': str, 'title': str, 'no': int, 'name': str}
+
+    Returns:
+        list[str]: List of page image URLs
     """
 
-    r = SESSION.get(issue_dict['url'], cookies=AGE_COOKIE)
+    r = SESSION.get(episode['url'], cookies=AGE_COOKIE)
 
     if r:
-        pages_list = [page.attrs['data-url']
-                      for page in r.html.find('._images')]
+        image_urls = [image.attrs['data-url']
+                      for image in r.html.find('._images')]
         print(f"📄 {episode['title']} #{episode['no']}: "
-              f"{episode['name']} - Found {len(pages_list)} pages.")
-    return (pages_list)
+              f"{episode['name']} - Found {len(image_urls)} pages.")
+
+    return (image_urls)
 
 
-def get_comic_page_images(issue_dict):
+def get_episode_images(episode: dict) -> list[bytes]:
+    """Get image files (pages) of an episode
+
+    Args:
+        episode (dict): Episode dict object
+                        {'url': str, 'title': str, 'no': int, 'name': str}
+
+    Returns:
+        list[bytes]: Episode's page images (jpg binary data)
     """
-    Get image files for each page of comic issue
-    :param issue_dict: comic issue dict entry
-                       {'url': str, 'author': str, 'title': str}
-    :return: list of jpg binary data for each page of comic
-    """
 
-    page_images = []
+    images = []
+    image_urls = get_image_urls(episode)
 
-    # Download each image in page list and create list of jpg binary data
-    total_pages = len(issue_dict['page-urls']);
-    for index, page in enumerate(issue_dict['page-urls']):
+    total_pages = len(image_urls)
+    for index, image_url in enumerate(image_urls):
         print(f"\tDownloading page {index+1}/{total_pages}.")
         # to download good-quality images
-        page = page.replace('?type=q90', '')
-        r = SESSION.get(page, headers={'referer': issue_dict['url']})
+        image_url = image_url.replace('?type=q90', '')
+        r = SESSION.get(image_url, headers={'referer': episode['url']})
 
         if r:
-            page_images.append(r.content)
+            images.append(r.content)
 
-    return (page_images)
+    return (images)
 
 
 ########################################################################
@@ -190,12 +198,7 @@ for episode in episodes:
               f"{episode['name']}.")
         continue
 
-    # Add page URLs for each issue in dict list
-    episode.update({'page-urls': get_comic_pages(episode)})
-
-    # Get images for each issue in dict list
-    episode.update({'page-img': get_comic_page_images(episode)})
-
+    episode_images = get_episode_images(episode)
     print(f"💾 Saving episode...")
 
     # Create output directory
@@ -210,7 +213,7 @@ for episode in episodes:
         os.makedirs(outpath, exist_ok=True)
 
         # Write each image to folder
-        for index, image in enumerate(episode['page-img']):
+        for index, image in enumerate(episode_images):
             with open(f"{outpath}/{index}.jpg", 'wb') as f:
                 f.write(image)
 
@@ -220,7 +223,7 @@ for episode in episodes:
 
         # Write each image into zip file
         with zipfile.ZipFile(outpath, 'w') as zip:
-            for index, image in enumerate(episode['page-img']):
+            for index, image in enumerate(episode_images):
                 zip.writestr(f"{index}.jpg", image)
 
 print("🎉 DONE! All episodes downloaded.")
