@@ -70,40 +70,41 @@ def comics_from_gallery(gallery_url):
     return (comics_list)
 
 
-def process_url_list(url_list):
+def get_episode_list(urls: list[str]) -> list[dict]:
+    """Organize webtoons URLs into dictionary and expand any links to episodes
+
+    Args:
+        urls (list[str]): URLs to comic title or episode pages
+
+    Returns:
+        list[dict]: Comic episodes (url, title and episode no/name)
+                    [{'url': str, 'title': str, 'no': int, 'name': str}, ...]
     """
-    Organize webtoons URLs into dictionary and expand any links to galleries
-    :param url_list: list of str URLs to comic issue or gallery pages
-    :return: list of dicts containing url, author and title for each comic issue
-             [{'url': str, 'author': str, 'title': str}, ...]
-    """
 
-    processed_list = []
+    episodes = []
 
-    for url in url_list:
-        # Capture groups: 0 -- Full match, 1 -- Author name, 2 -- Comic title
-        r = re.search(r"webtoons\.com\/.+?\/.+?\/(.+?)\/(.+?)(?:\?|\/)", url)
+    for url in urls:
+        # Capture groups: 0 -- Full match, 1 -- Title, 2 -- Episode name
+        match = re.search(r"webtoons\.com\/.+?\/.+?\/(.+?)\/(.+?)(?:\?|\/)", url)
 
-        if r:
-            # Check if webtoon_url is gallery
-            if r.group(2) == "list":
-                print(f"Getting gallery from {r.group(1)}...")
+        if match is None:
+            print(f"\t ❌ Error: '{url}' could not be parsed.")
+            continue
 
-                # Do additional processing that returns new url list
-                # Recursivly run this fuction
-                # Extend results into expanded_list
-                processed_list.extend(
-                    process_url_list(comics_from_gallery(url)))
+        # Retrieve episode urls if url is title page/episode list
+        if match.group(2) == "list":
+            print(f"Fetching episodes from {match.group(1)}...")
+            urls.extend(comics_from_gallery(url))
+            continue
 
-            else:
-                processed_list.append({
-                    'url': url,
-                    'author': r.group(1),
-                    'title': r.group(2)
-                })
-                # print(r.group(2))
+        episodes.append({
+            'url': url,
+            'title': match.group(1),
+            'no': int(url.split('episode_no=')[1]),
+            'name': match.group(2)
+        })
 
-    return (processed_list)
+    return episodes
 
 
 def get_comic_pages(issue_dict):
@@ -121,7 +122,7 @@ def get_comic_pages(issue_dict):
     if r:
         pages_list = [page.attrs['data-url']
                       for page in r.html.find('._images')]
-        print(f"Comic {issue_dict['title']}: got {len(pages_list)} pages")
+        print(f"Comic {issue_dict['name']}: got {len(pages_list)} pages")
     return (pages_list)
 
 
@@ -137,7 +138,7 @@ def get_comic_page_images(issue_dict):
 
     session = HTMLSession()
 
-    print(f"Issue: {issue_dict['title']}")
+    print(f"Issue: {issue_dict['name']}")
 
     # Download each image in page list and create list of jpg binary data
     for index, page in enumerate(issue_dict['page-urls']):
@@ -180,7 +181,7 @@ parser.add_argument("-e", "--end",
 args = parser.parse_args()
 
 print("Finding comics...")
-comic_list = process_url_list(args.webtoon_url)
+comic_list = get_episode_list(args.webtoon_url)
 print(f"Found {len(comic_list)} issues.")
 
 # Add page URLs for each issue in dict list
@@ -191,14 +192,11 @@ print(f"Found {len(comic_list)} issues.")
 
 # Save each comic
 for comic in comic_list:
-    # Fetch the episode number from the end of the URL
-    episode_no = int(comic['url'].split('episode_no=')[1])
-
     # Check if episode should not be downloaded and skip
-    if (args.start is not None and episode_no < args.start) \
-            or (args.end is not None and episode_no > args.end):
-        print(f"Skipping issue {episode_no}: " \
-            f"{comic['author']} / {comic['title']}.")
+    if (args.start is not None and comic['no'] < args.start) \
+            or (args.end is not None and comic['no'] > args.end):
+        print(f"Skipping episode {comic['no']}: "
+              f"{comic['title']} / {comic['name']}.")
         continue
 
     # Add page URLs for each issue in dict list
@@ -207,8 +205,8 @@ for comic in comic_list:
     # Get images for each issue in dict list
     comic.update({'page-img': get_comic_page_images(comic)})
 
-    print(f"Saving issue {episode_no}: " \
-        f"{comic['author']} / {comic['title']}...")
+    print(f"Saving issue {comic['no']}: "
+          f"{comic['title']} / {comic['name']}...")
 
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
@@ -216,9 +214,9 @@ for comic in comic_list:
     # Raw mode, save images into folders
     if args.raw:
         if args.number:
-            outpath = f"{args.output}/{episode_no}_{comic['author']}_{comic['title']}"
+            outpath = f"{args.output}/{comic['no']}_{comic['title']}_{comic['name']}"
         else:
-            outpath = f"{args.output}/{comic['author']}_{comic['title']}"
+            outpath = f"{args.output}/{comic['title']}_{comic['name']}"
         os.makedirs(outpath, exist_ok=True)
 
         # Write each image to folder
@@ -228,7 +226,7 @@ for comic in comic_list:
 
     # CBZ mode
     else:
-        outpath = f"{args.output}/{comic['author']}_{comic['title']}.cbz"
+        outpath = f"{args.output}/{comic['title']}_{comic['name']}.cbz"
 
         # Write each image into zip file
         with zipfile.ZipFile(outpath, 'w') as zip:
