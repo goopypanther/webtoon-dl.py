@@ -13,7 +13,6 @@ __copyright__ = 'Copyright 2019 Goopypanther'
 __version__ = '0.1'
 
 
-
 import argparse
 import os
 import re
@@ -26,6 +25,7 @@ AGE_COOKIE = {
     'needCOPPA': 'false',
     'needGDPR': 'false',
 }
+
 
 def comics_from_gallery(gallery_url):
     """
@@ -49,7 +49,8 @@ def comics_from_gallery(gallery_url):
 
         # Check if the list of pages is paginated
         while moarpages:
-            moarpages_link = session.get(''.join(moarpages.absolute_links), cookies=AGE_COOKIE)
+            moarpages_link = session.get(''.join(moarpages.absolute_links),
+                                         cookies=AGE_COOKIE)
             more_pages.append(moarpages_link)
             moarpages = moarpages_link.html.find('.pg_next', first=True)
 
@@ -63,10 +64,10 @@ def comics_from_gallery(gallery_url):
 
         # Extract list of every comic on every page
         for page in pages:
-            comics_list.extend(page.html.find('#_listUl', first=True).absolute_links)
+            comics_list.extend(page.html.find(
+                '#_listUl', first=True).absolute_links)
 
     return (comics_list)
-
 
 
 def process_url_list(url_list):
@@ -86,19 +87,23 @@ def process_url_list(url_list):
         if r:
             # Check if webtoon_url is gallery
             if r.group(2) == "list":
-                print("Getting gallery from %s..." % r.group(1))
+                print(f"Getting gallery from {r.group(1)}...")
 
                 # Do additional processing that returns new url list
                 # Recursivly run this fuction
                 # Extend results into expanded_list
-                processed_list.extend(process_url_list(comics_from_gallery(url)))
+                processed_list.extend(
+                    process_url_list(comics_from_gallery(url)))
 
             else:
-                processed_list.append({'url': url, 'author': r.group(1), 'title': r.group(2)})
+                processed_list.append({
+                    'url': url,
+                    'author': r.group(1),
+                    'title': r.group(2)
+                })
                 print(r.group(2))
 
     return (processed_list)
-
 
 
 def get_comic_pages(issue_dict):
@@ -114,10 +119,10 @@ def get_comic_pages(issue_dict):
     r = session.get(issue_dict['url'], cookies=AGE_COOKIE)
 
     if r:
-        pages_list = [page.attrs['data-url'] for page in r.html.find('._images')]
-        print("Comic %s: got %i pages" % (issue_dict['title'], len(pages_list)))
+        pages_list = [page.attrs['data-url']
+                      for page in r.html.find('._images')]
+        print(f"Comic {issue_dict['title']}: got {len(pages_list)} pages")
     return (pages_list)
-
 
 
 def get_comic_page_images(issue_dict):
@@ -132,11 +137,11 @@ def get_comic_page_images(issue_dict):
 
     session = HTMLSession()
 
-    print("Issue: %s" % issue_dict['title'])
+    print(f"Issue: {issue_dict['title']}")
 
     # Download each image in page list and create list of jpg binary data
     for index, page in enumerate(issue_dict['page-urls']):
-        print("Downloading page %i/%i" % ((index + 1), len(issue_dict['page-urls'])))
+        print(f"Downloading page {(index + 1)}/{len(issue_dict['page-urls'])}")
         # to download good-quality images
         page = page.replace('?type=q90', '')
         r = session.get(page, headers={'referer': issue_dict['url']})
@@ -145,7 +150,6 @@ def get_comic_page_images(issue_dict):
             page_images.append(r.content)
 
     return (page_images)
-
 
 
 # Set up argument parser
@@ -171,7 +175,7 @@ args = parser.parse_args()
 
 print("Finding comics...")
 comic_list = process_url_list(args.webtoon_url)
-print("Found %i issues." % len(comic_list))
+print(f"Found {len(comic_list)} issues.")
 
 # Add page URLs for each issue in dict list
 #[comic.update({'page-urls': get_comic_pages(comic)}) for comic in comic_list]
@@ -190,7 +194,8 @@ for comic in comic_list:
     # Fetch the chapter/episode/issue number from the end of the URL
     episodeNumber = comic['url'].split('episode_no=')[1]
 
-    print("Saving issue " + episodeNumber + ": %s_%s..." % (comic['author'], comic['title']))
+    print(f"Saving issue {episodeNumber}: \
+        {comic['author']}_{comic['title']}...")
 
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
@@ -198,23 +203,23 @@ for comic in comic_list:
     # Raw mode, save images into folders
     if args.raw:
         if args.number:
-            outpath = "%s" % args.output + "/" + episodeNumber + "_%s_%s" % (comic['author'], comic['title'])
+            outpath = f"{args.output}/{episodeNumber}_{comic['author']}_{comic['title']}"
         else:
-            outpath = "%s/%s_%s" % (args.output, comic['author'], comic['title'])
+            outpath = f"{args.output}/{comic['author']}_{comic['title']}"
         os.makedirs(outpath, exist_ok=True)
 
         # Write each image to folder
         for index, image in enumerate(comic['page-img']):
-            with open("%s/%s.jpg" % (outpath, index), 'wb') as f:
+            with open(f"{outpath}/{index}.jpg", 'wb') as f:
                 f.write(image)
 
     # CBZ mode
     else:
-        outpath = "%s/%s_%s.cbz" % (args.output, comic['author'], comic['title'])
+        outpath = f"{args.output}/{comic['author']}_{comic['title']}.cbz"
 
         # Write each image into zip file
         with zipfile.ZipFile(outpath, 'w') as zip:
             for index, image in enumerate(comic['page-img']):
-                zip.writestr("%i.jpg" % index, image)
+                zip.writestr(f"{index}.jpg", image)
 
 print("Done")
