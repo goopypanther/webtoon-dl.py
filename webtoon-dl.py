@@ -19,6 +19,7 @@ import re
 from requests_html import HTMLSession
 import zipfile
 
+SESSION = HTMLSession()
 # bypass age confirmation page
 AGE_COOKIE = {
     'needCCPA': 'false',
@@ -38,10 +39,8 @@ def comics_from_gallery(gallery_url):
     pages = []
     more_pages = []
 
-    session = HTMLSession()
-
     # Get first page
-    pages.append(session.get(gallery_url, cookies=AGE_COOKIE))
+    pages.append(SESSION.get(gallery_url, cookies=AGE_COOKIE))
 
     if pages[0]:
         more_pages.append(pages[0])
@@ -49,7 +48,7 @@ def comics_from_gallery(gallery_url):
 
         # Check if the list of pages is paginated
         while moarpages:
-            moarpages_link = session.get(''.join(moarpages.absolute_links),
+            moarpages_link = SESSION.get(''.join(moarpages.absolute_links),
                                          cookies=AGE_COOKIE)
             more_pages.append(moarpages_link)
             moarpages = moarpages_link.html.find('.pg_next', first=True)
@@ -60,7 +59,7 @@ def comics_from_gallery(gallery_url):
             # Extract list of other pages and download
             for new_page in pagegroup.html.find('.paginate', first=True).absolute_links:
                 # Get all other pages
-                pages.append(session.get(new_page, cookies=AGE_COOKIE))
+                pages.append(SESSION.get(new_page, cookies=AGE_COOKIE))
 
         # Extract list of every comic on every page
         for page in pages:
@@ -115,9 +114,7 @@ def get_comic_pages(issue_dict):
     :return: list of str URLs to comic page images
     """
 
-    session = HTMLSession()
-
-    r = session.get(issue_dict['url'], cookies=AGE_COOKIE)
+    r = SESSION.get(issue_dict['url'], cookies=AGE_COOKIE)
 
     if r:
         pages_list = [page.attrs['data-url']
@@ -137,15 +134,13 @@ def get_comic_page_images(issue_dict):
 
     page_images = []
 
-    session = HTMLSession()
-
     # Download each image in page list and create list of jpg binary data
     total_pages = len(issue_dict['page-urls']);
     for index, page in enumerate(issue_dict['page-urls']):
         print(f"\tDownloading page {index+1}/{total_pages}.")
         # to download good-quality images
         page = page.replace('?type=q90', '')
-        r = session.get(page, headers={'referer': issue_dict['url']})
+        r = SESSION.get(page, headers={'referer': issue_dict['url']})
 
         if r:
             page_images.append(r.content)
