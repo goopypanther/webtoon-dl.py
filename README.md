@@ -1,8 +1,8 @@
 Webtoon-dl.py
 =============
 
-Comic downloader/scraper for http://www.webtoons.com. Download individual comics or entire galleries. Output as CBZ archives or as sets of folders containing numbered images.
-Allows download of specified episodes.
+Comic downloader/scraper for http://www.webtoons.com. Download individual episodes or entire comics.
+Output as CBZ archives or as sets of folders containing numbered images.
 
 Requirements
 ------------

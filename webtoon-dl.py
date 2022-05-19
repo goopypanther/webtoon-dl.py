@@ -3,14 +3,14 @@
 
 """
 Webtoon-dl is a comic downloader for webtoons.com. It can save individual
-comics or entire galleries as folders of numbered images or CBZ comicbook
-archive files.
+comic episodes or entire galleries as folders of numbered images or CBZ
+comicbook archive files.
 """
 __title__ = 'webtoon-dl.py'
 __author__ = 'Goopypanther'
 __license__ = 'GPL'
 __copyright__ = 'Copyright 2019 Goopypanther'
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 import argparse
@@ -73,7 +73,7 @@ def get_episodes_from_list(list_url: str) -> list[str]:
     return list(episode_urls)
 
 
-def get_episode_list(urls: list[str]) -> list[dict]:
+def get_episodes(urls: list[str]) -> list[dict]:
     """Organize webtoons URLs into dictionary and expand any links to episodes
 
     Args:
@@ -164,7 +164,7 @@ def get_episode_images(episode: dict) -> list[bytes]:
 #   MAIN FUNCTION                                                      #
 ########################################################################
 # Set up argument parser
-parser = argparse.ArgumentParser(description="Webtoons.com comic downloader\nSaves comics as CBZ archives or folders of images.\nAutomatically saves galleries as seperate comics.",
+parser = argparse.ArgumentParser(description="Webtoons.com comic downloader\nSaves comics as CBZ archives or folders of images.\nAutomatically saves episodes as seperate comics.",
                                  formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("webtoon_url",
                     help="Url to webtoons comic or creator page.\nMultiple URLs may be entered.",
@@ -191,11 +191,11 @@ args = parser.parse_args()
 
 # Search episodes
 print("🔍 Looking for comics...")
-episodes = get_episode_list(args.webtoon_url)
+episodes = get_episodes(args.webtoon_url)
 print(f"✔️ Found {len(episodes)} episodes!\n")
 
 # Save each comic
-episodes.sort(key=lambda episode: episode['no'])
+episodes.sort(key=lambda episode: (episode['title'], episode['no']))
 for episode in episodes:
     # Check if episode should not be downloaded and skip
     if (args.start is not None and episode['no'] < args.start) \
